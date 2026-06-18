@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>passcode</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .textClear {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+        <div class="textClear" id="passcode">To enter, please complete the following phrase:</div><br>
+
+        <div class="textClear" id="password-input">
+            <label for="password">From the river to the sea,</label><br>
+            <input type="text" id="password" autocomplete="off" /><br>
+            <button id="button" onclick="checkPassword()">Enter</button>
+        </div>
+
+        <div class="textClear" id="passcode-instructions"><i>All lowercase and no spaces</i></div>
+
+        <div class="textClear" id="message"></div>
+    </div>
+
+<script>
+        var attempts = 0; // Variable to track attempts
+        var message = document.getElementById("message");
+
+        function checkPassword() {
+            var password = document.getElementById("password").value;
+            if (password === "palestinewillbefree") {
+                window.location.href = "/p5/yes.html"; // Redirect to success page
+            } else {
+                attempts++; // Increment attempts
+                if (attempts === 1) {
+                    openPopup("error1.html");
+                } else if (attempts === 2) {
+                    openPopup("error2.html");
+                } else {
+                    window.location.href = "no.html"; // Redirect to failure page
+                }
+            }
+        }
+
+        function openPopup(pageUrl) {
+            var popup = window.open(pageUrl, "_blank", "width=400,height=400");
+            if (popup) {
+                popup.focus();
+            } else {
+                alert("Please allow popups for this site to view the error page.");
+            }
+        }
+</script>
+</body>
+</html>

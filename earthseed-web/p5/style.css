@@ -1,0 +1,86 @@
+
+body{
+  background-color: black;
+  color:white;
+  font-family:'Times New Roman', Times, serif;
+}
+.text{
+font-size: 15px;
+color:whitesmoke;
+font-family: 'Times New Roman', Times, serif;
+filter:blur(3px);
+line-height: 130%;
+background-color: black;
+
+}
+.text:hover{
+  filter: blur(.3px);
+}
+.textClear{
+  font-size: 20px;
+  color:whitesmoke;
+  font-family: 'Times New Roman', Times, serif;
+  filter:blur(.3px);
+  line-height: 150%;
+  background-color: black; 
+}
+audio {
+  filter: sepia(20%) saturate(70%) grayscale(1) contrast(99%) invert(12%);
+  width: 400px;
+  height: 25px;
+}
+#password{
+  background-color: black;
+  color: whitesmoke;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 20px;
+}
+button {
+  background-color: black;
+  color: whitesmoke;
+  border: 1px solid whitesmoke;
+  border-radius: 20px;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+#message {
+  margin-top: 20px; /* Adjust the margin to move the message */
+}
+h1{
+  font-size: 30px;
+}
+h3{
+  font-size: 15px;
+}
+.window {
+  width: 80%; /* Responsive width */
+  height: 60%; /* Responsive height */
+  margin: auto; /* Centers the div horizontally */
+  position: absolute; /* Allows precise positioning */
+  top: 50%; /* Center vertically */
+  left: 50%; /* Center horizontally */
+  transform: translate(-50%, -50%); /* Adjust positioning to true center */
+  background-color: transparent;
+  border: 3px groove rgba(149, 69, 53, 0.5);
+  border-radius: 20px;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex; /* Ensures content is centered */
+  align-items: center; /* Vertical alignment */
+  justify-content: center; /* Horizontal alignment */
+  opacity: .6;
+}
+#title{
+  position: absolute;
+  color: whitesmoke;
+  text-shadow: 5px 5px 2px #6F4E37;
+  border: 6px double whitesmoke;
+  width: 50px;
+  left: 570px;
+  top: 100px;
+  font-size: 100px;
+  font-family: 'Times New Roman', Times, serif;
+  line-height: 75px;
+  text-align: center;
+  z-index: 3;
+}

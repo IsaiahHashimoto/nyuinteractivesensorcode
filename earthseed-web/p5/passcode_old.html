@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>passcode</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Center content */
+        /*
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }*/
+
+        .textClear {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+        <div class="textClear" id="passcode">To enter, please complete the following phrase:</div><br>
+
+        <div class="textClear" id="password-input">
+            <label for="password">From the river to the sea,</label><br>
+            <input type="text" id="password" autocomplete="off" /><br>
+            <button id="button" onclick="checkPassword()">Enter</button>
+        </div>
+
+        <div class="textClear" id="passcode-instructions"><i>All lowercase and no spaces</i></div>
+
+        <div class="textClear" id="message"></div>
+    
+        
+    </div>
+
+    <script>
+        var attempts = 0; // Variable to track attempts
+        var message = document.getElementById("message");
+
+        function checkPassword() {
+            var password = document.getElementById("password").value;
+            if (password === "palestinewillbefree") {
+                window.location.href = "/p5/yes.html"; // Redirect to success page
+            } else {
+                attempts++; // Increment attempts
+                if (attempts === 1) {
+                    openArticle("https://www.aljazeera.com/news/2023/11/2/from-the-river-to-the-sea-what-does-the-palestinian-slogan-really-mean");
+                } else if (attempts === 2) {
+                    openVideo("lP7FSYgeUiw", 345); // Video ID and start time
+                } else {
+                    window.location.href = "no.html"; // Redirect to failure page
+                }
+            }
+        }
+
+        function openArticle(articleUrl) {
+            var popup = window.open(articleUrl, "_blank", "width=600,height=400");
+            if (popup) {
+                popup.focus();
+            } else {
+                alert("Please allow popups for this site to open the article.");
+            }
+        }
+
+        function openVideo(videoId, startTime) {
+            var url = "https://www.youtube.com/watch?v=" + videoId + "&start=" + startTime;
+            var popup = window.open(url, "_blank", "width=560,height=415");
+            if (popup) {
+                popup.focus();
+            } else {
+                alert("Please allow popups for this site to watch the video.");
+            }
+        }
+    </script>
+</body>
+</html>
+
+
