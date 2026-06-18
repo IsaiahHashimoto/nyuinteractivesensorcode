@@ -14,6 +14,7 @@ let socket = null;
 let reconnectTimer = null;
 let defaultSound;
 let audioButton;
+let testButton;
 let audioStarted = false;
 let previousSensorState = { seed1: 0, seed2: 0, seed3: 0 };
 let storyIndexes = { seed1: 0, seed2: 0, seed3: 0 };
@@ -30,6 +31,7 @@ function setup() {
   attachStoryEndHandlers();
   createBridgeStatus();
   createAudioButton();
+  createTestButton();
   connectBridge();
   startAudio();
 }
@@ -70,6 +72,12 @@ function createAudioButton() {
   audioButton = createButton("Start Audio");
   audioButton.position(10, 42);
   audioButton.mousePressed(startAudio);
+}
+
+function createTestButton() {
+  testButton = createButton("Test Story");
+  testButton.position(110, 42);
+  testButton.mousePressed(() => enqueueStory("seed1"));
 }
 
 function setBridgeStatus(message, error) {

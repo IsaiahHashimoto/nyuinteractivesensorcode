@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const express = require("express");
 const http = require("http");
 const { SerialPort } = require("serialport");
@@ -6,7 +7,7 @@ const { ReadlineParser } = require("@serialport/parser-readline");
 const { WebSocket, WebSocketServer } = require("ws");
 
 const HTTP_PORT = Number(process.env.PORT || 3001);
-const SERIAL_PATH = process.env.SERIAL_PATH || "/dev/ttyACM0";
+const CONFIGURED_SERIAL_PATH = process.env.SERIAL_PATH || "/dev/ttyACM0";
 const BAUD_RATE = Number(process.env.BAUD_RATE || 9600);
 const RECONNECT_DELAY_MS = Number(process.env.RECONNECT_DELAY_MS || 3000);
 
@@ -43,10 +44,17 @@ function connectSerial() {
   }
 
   clearReconnectTimer();
-  console.log(`Opening serial port ${SERIAL_PATH} at ${BAUD_RATE} baud`);
+  const serialPath = resolveSerialPath();
+  if (!serialPath) {
+    console.log("Serial connection failed: no Arduino serial device found");
+    scheduleReconnect();
+    return;
+  }
+
+  console.log(`Opening serial port ${serialPath} at ${BAUD_RATE} baud`);
 
   serialPort = new SerialPort({
-    path: SERIAL_PATH,
+    path: serialPath,
     baudRate: BAUD_RATE,
     autoOpen: false
   });
@@ -84,6 +92,26 @@ function connectSerial() {
     console.log("Arduino disconnected");
     scheduleReconnect();
   });
+}
+
+function resolveSerialPath() {
+  if (fs.existsSync(CONFIGURED_SERIAL_PATH)) {
+    return CONFIGURED_SERIAL_PATH;
+  }
+
+  console.log(`Configured serial path ${CONFIGURED_SERIAL_PATH} was not found; scanning common Arduino paths`);
+
+  const candidates = [];
+  for (let i = 0; i < 10; i += 1) {
+    candidates.push(`/dev/ttyACM${i}`);
+    candidates.push(`/dev/ttyUSB${i}`);
+  }
+
+  const detectedPath = candidates.find((candidate) => fs.existsSync(candidate));
+  if (detectedPath) {
+    console.log(`Using detected serial path ${detectedPath}`);
+  }
+  return detectedPath;
 }
 
 function parseSensorLine(line) {
