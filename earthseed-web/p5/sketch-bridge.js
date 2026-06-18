@@ -1,29 +1,46 @@
-let sounds = [];
+const STORY_TRACKS = {
+  seed1: ["seed1_collage.mp3", "jimmy1.mp3"],
+  seed2: ["seed2_dre.mp3", "nina1.mp3"],
+  seed3: ["seed3_ximena.mp3", "sherri1.mp3"]
+};
+const MAX_QUEUE_LENGTH = 12;
+
+let sounds = {};
+let storyQueue = [];
+let activeStory = null;
 let statusMessage;
+let queueMessage;
 let socket = null;
 let reconnectTimer = null;
-let storyState = 0;
 let defaultSound;
-let seed1 = 0;
-let seed2 = 0;
-let seed3 = 0;
+let audioButton;
+let audioStarted = false;
+let previousSensorState = { seed1: 0, seed2: 0, seed3: 0 };
+let storyIndexes = { seed1: 0, seed2: 0, seed3: 0 };
 
 function preload() {
-  let soundFiles = ["seed1_collage.mp3", "seed2_dre.mp3", "seed3_ximena.mp3"];
-  soundFiles.forEach((file) => {
-    sounds.push(loadSound(file));
+  Object.values(STORY_TRACKS).flat().forEach((file) => {
+    sounds[file] = loadSound(file);
   });
   defaultSound = loadSound("crickets.mp3");
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  attachStoryEndHandlers();
   createBridgeStatus();
+  createAudioButton();
   connectBridge();
-  defaultSound.loop();
+  startAudio();
 }
 
 function draw() {
+}
+
+function attachStoryEndHandlers() {
+  Object.entries(sounds).forEach(([file, sound]) => {
+    sound.onended(() => finishActiveStory(file));
+  });
 }
 
 function createBridgeStatus() {
@@ -36,6 +53,23 @@ function createBridgeStatus() {
   statusMessage.style("padding", "4px 6px");
   statusMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
   statusMessage.style("z-index", "10");
+
+  queueMessage = createDiv("");
+  queueMessage.position(10, 74);
+  queueMessage.style("font-size", "12px");
+  queueMessage.style("color", "whitesmoke");
+  queueMessage.style("font-family", "Times New Roman, Times, serif");
+  queueMessage.style("background", "black");
+  queueMessage.style("padding", "4px 6px");
+  queueMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
+  queueMessage.style("z-index", "10");
+  updateQueueStatus();
+}
+
+function createAudioButton() {
+  audioButton = createButton("Start Audio");
+  audioButton.position(10, 42);
+  audioButton.mousePressed(startAudio);
 }
 
 function setBridgeStatus(message, error) {
@@ -45,6 +79,44 @@ function setBridgeStatus(message, error) {
   }
   if (statusMessage) {
     statusMessage.html(message);
+  }
+}
+
+function updateQueueStatus() {
+  if (!queueMessage) {
+    return;
+  }
+
+  let activeText = activeStory ? `playing ${activeStory.file}` : "no story playing";
+  queueMessage.html(`${activeText}; queue ${storyQueue.length}`);
+}
+
+async function startAudio() {
+  try {
+    await userStartAudio();
+    audioStarted = getAudioContext().state === "running";
+
+    if (audioStarted) {
+      if (defaultSound && !defaultSound.isPlaying()) {
+        defaultSound.loop();
+      }
+      if (audioButton) {
+        audioButton.hide();
+      }
+      playNextQueuedStory();
+      setBridgeStatus(socket && socket.readyState === WebSocket.OPEN ? "Connected to local serial bridge" : "Audio ready");
+    } else {
+      showAudioButton();
+    }
+  } catch (err) {
+    setBridgeStatus("Audio blocked; click Start Audio", err);
+    showAudioButton();
+  }
+}
+
+function showAudioButton() {
+  if (audioButton) {
+    audioButton.show();
   }
 }
 
@@ -91,33 +163,87 @@ function scheduleBridgeReconnect() {
 }
 
 function handleSensorState(state) {
-  seed1 = int(state.seed1);
-  seed2 = int(state.seed2);
-  seed3 = int(state.seed3);
+  let sensorState = {
+    seed1: int(state.seed1),
+    seed2: int(state.seed2),
+    seed3: int(state.seed3)
+  };
 
-  if (seed1 === 1 && seed2 === 0 && seed3 === 0) {
-    playSound(0);
-  }
-  if (seed1 === 0 && seed2 === 1 && seed3 === 0) {
-    playSound(1);
-  }
-  if (seed1 === 0 && seed2 === 0 && seed3 === 1) {
-    playSound(2);
-  }
+  enqueueSensorAdvances(sensorState);
+  previousSensorState = sensorState;
 }
 
-function playSound(activeIndex) {
-  sounds.forEach((sound, index) => {
-    if (index === activeIndex) {
-      if (!sound.isPlaying()) {
-        sound.play();
-      }
-    } else {
-      if (sound.isPlaying()) {
-        sound.stop();
-      }
+function enqueueSensorAdvances(sensorState) {
+  Object.keys(STORY_TRACKS).forEach((seedKey) => {
+    if (previousSensorState[seedKey] === 0 && sensorState[seedKey] === 1) {
+      enqueueStory(seedKey);
     }
   });
+}
 
-  storyState = activeIndex;
+function enqueueStory(seedKey) {
+  if (storyQueue.length >= MAX_QUEUE_LENGTH) {
+    console.log(`Story queue full; ignoring ${seedKey}`);
+    return;
+  }
+
+  let file = nextStoryFile(seedKey);
+  storyQueue.push({ seed: seedKey, file });
+  console.log(`Queued ${file} from ${seedKey}`);
+  updateQueueStatus();
+  playNextQueuedStory();
+}
+
+function nextStoryFile(seedKey) {
+  let files = STORY_TRACKS[seedKey];
+  let index = storyIndexes[seedKey] % files.length;
+  storyIndexes[seedKey] += 1;
+  return files[index];
+}
+
+function playNextQueuedStory() {
+  audioStarted = getAudioContext().state === "running";
+  if (!audioStarted) {
+    setBridgeStatus("Audio blocked; click Start Audio");
+    showAudioButton();
+    updateQueueStatus();
+    return;
+  }
+
+  if (activeStory || storyQueue.length === 0) {
+    updateQueueStatus();
+    return;
+  }
+
+  activeStory = storyQueue.shift();
+  let sound = sounds[activeStory.file];
+  if (!sound) {
+    console.error(`Missing sound file: ${activeStory.file}`);
+    activeStory = null;
+    playNextQueuedStory();
+    return;
+  }
+
+  console.log(`Playing ${activeStory.file} from ${activeStory.seed}`);
+  updateQueueStatus();
+  sound.play();
+}
+
+function finishActiveStory(file) {
+  if (!activeStory || activeStory.file !== file) {
+    return;
+  }
+
+  console.log(`Finished ${file}`);
+  activeStory = null;
+  updateQueueStatus();
+  playNextQueuedStory();
+}
+
+function mousePressed() {
+  startAudio();
+}
+
+function touchStarted() {
+  startAudio();
 }

@@ -298,15 +298,27 @@ http://localhost:3000/p5/index.html
 Current behavior:
 
 - `crickets.mp3` loops as background ambience.
-- Touching seed 1 plays `seed1_collage.mp3`.
-- Touching seed 2 plays `seed2_dre.mp3`.
-- Touching seed 3 plays `seed3_ximena.mp3`.
-- Starting one story stops the other story tracks.
+- Story audio is queued when a seed changes from inactive to active.
+- Holding a seed does not repeatedly add the same story to the queue.
+- One story plays at a time.
+- When the current story ends, the next queued story starts.
+- Ambient files are not placed in the story queue.
+
+Current story mapping:
+
+- Seed 1 cycles through `seed1_collage.mp3`, then `jimmy1.mp3`.
+- Seed 2 cycles through `seed2_dre.mp3`, then `nina1.mp3`.
+- Seed 3 cycles through `seed3_ximena.mp3`, then `sherri1.mp3`.
+
+Ambient/non-queue files:
+
+- `crickets.mp3`
+- `default.mp3`
 
 Open behavior choices:
 
 - Should the background crickets continue underneath stories?
-- Should a story restart every time the same seed is touched?
+- Should story assignments change between seeds?
 - Should silence or crickets return when no seed is touched?
 - Should simultaneous touches be ignored, mixed, or prioritized?
 
@@ -382,6 +394,18 @@ cd /home/interactivesensor/nyuinteractivesensorcode/earthseed-web
 npm start &
 sleep 5
 chromium-browser --kiosk http://localhost:3001/p5/yes-bridge.html
+```
+
+If Chromium blocks audio in kiosk mode, add the autoplay flag and keep the
+bridge page's `Start Audio` button as a manual fallback:
+
+```bash
+chromium-browser \
+  --kiosk \
+  --noerrdialogs \
+  --disable-infobars \
+  --autoplay-policy=no-user-gesture-required \
+  http://localhost:3001/p5/yes-bridge.html
 ```
 
 ### Phase 4: Installation Hardening

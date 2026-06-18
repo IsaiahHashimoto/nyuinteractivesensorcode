@@ -1,27 +1,34 @@
 const SERIAL_OPTIONS = { baudRate: 9600 };
+const STORY_TRACKS = {
+  seed1: ["seed1_collage.mp3", "jimmy1.mp3"],
+  seed2: ["seed2_dre.mp3", "nina1.mp3"],
+  seed3: ["seed3_ximena.mp3", "sherri1.mp3"]
+};
+const MAX_QUEUE_LENGTH = 12;
 
 const serial = new p5.WebSerial();
-let sounds = [];
+let sounds = {};
+let storyQueue = [];
+let activeStory = null;
 let portButton;
 let statusMessage;
-let storyState = 0; // which one should be playing
+let queueMessage;
 let defaultSound;
-let seed1 = 0;
-let seed2 = 0;
-let seed3 = 0;
+let previousSensorState = { seed1: 0, seed2: 0, seed3: 0 };
+let storyIndexes = { seed1: 0, seed2: 0, seed3: 0 };
 let serialOpening = false;
 let serialConnected = false;
 
 function preload() {
-  let soundFiles = ["seed1_collage.mp3", "seed2_dre.mp3", "seed3_ximena.mp3"];
-  soundFiles.forEach((file) => {
-    sounds.push(loadSound(file));
+  Object.values(STORY_TRACKS).flat().forEach((file) => {
+    sounds[file] = loadSound(file);
   });
   defaultSound = loadSound("crickets.mp3");
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  attachStoryEndHandlers();
   createSerialStatus();
 
   if (!navigator.serial) {
@@ -52,6 +59,12 @@ function setup() {
 function draw() {
 }
 
+function attachStoryEndHandlers() {
+  Object.entries(sounds).forEach(([file, sound]) => {
+    sound.onended(() => finishActiveStory(file));
+  });
+}
+
 function createSerialStatus() {
   statusMessage = createDiv("");
   statusMessage.position(10, 42);
@@ -62,6 +75,17 @@ function createSerialStatus() {
   statusMessage.style("padding", "4px 6px");
   statusMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
   statusMessage.style("z-index", "10");
+
+  queueMessage = createDiv("");
+  queueMessage.position(10, 74);
+  queueMessage.style("font-size", "12px");
+  queueMessage.style("color", "whitesmoke");
+  queueMessage.style("font-family", "Times New Roman, Times, serif");
+  queueMessage.style("background", "black");
+  queueMessage.style("padding", "4px 6px");
+  queueMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
+  queueMessage.style("z-index", "10");
+  updateQueueStatus();
 }
 
 function setSerialStatus(message, error) {
@@ -72,6 +96,15 @@ function setSerialStatus(message, error) {
   if (statusMessage) {
     statusMessage.html(message);
   }
+}
+
+function updateQueueStatus() {
+  if (!queueMessage) {
+    return;
+  }
+
+  let activeText = activeStory ? `playing ${activeStory.file}` : "no story playing";
+  queueMessage.html(`${activeText}; queue ${storyQueue.length}`);
 }
 
 async function attemptAutoConnect() {
@@ -194,20 +227,12 @@ function serialEvent() {
   if (inString) {
     let sensors = split(inString, ",");
     if (sensors.length > 2) {
-      seed1 = int(trim(sensors[0]));
-      seed2 = int(trim(sensors[1]));
-      seed3 = int(trim(sensors[2]));
+      handleSensorState({
+        seed1: int(trim(sensors[0])),
+        seed2: int(trim(sensors[1])),
+        seed3: int(trim(sensors[2]))
+      });
     }
-  }
-
-  if (seed1 === 1 && seed2 === 0 && seed3 === 0) {
-    playSound(0);
-  }
-  if (seed1 === 0 && seed2 === 1 && seed3 === 0) {
-    playSound(1);
-  }
-  if (seed1 === 0 && seed2 === 0 && seed3 === 1) {
-    playSound(2);
   }
 
   if (serialConnected || serial.portOpen) {
@@ -215,18 +240,66 @@ function serialEvent() {
   }
 }
 
-function playSound(activeIndex) {
-  sounds.forEach((sound, index) => {
-    if (index === activeIndex) {
-      if (!sound.isPlaying()) {
-        sound.play();
-      }
-    } else {
-      if (sound.isPlaying()) {
-        sound.stop();
-      }
+function handleSensorState(sensorState) {
+  enqueueSensorAdvances(sensorState);
+  previousSensorState = sensorState;
+}
+
+function enqueueSensorAdvances(sensorState) {
+  Object.keys(STORY_TRACKS).forEach((seedKey) => {
+    if (previousSensorState[seedKey] === 0 && sensorState[seedKey] === 1) {
+      enqueueStory(seedKey);
     }
   });
+}
 
-  storyState = activeIndex;
+function enqueueStory(seedKey) {
+  if (storyQueue.length >= MAX_QUEUE_LENGTH) {
+    console.log(`Story queue full; ignoring ${seedKey}`);
+    return;
+  }
+
+  let file = nextStoryFile(seedKey);
+  storyQueue.push({ seed: seedKey, file });
+  console.log(`Queued ${file} from ${seedKey}`);
+  updateQueueStatus();
+  playNextQueuedStory();
+}
+
+function nextStoryFile(seedKey) {
+  let files = STORY_TRACKS[seedKey];
+  let index = storyIndexes[seedKey] % files.length;
+  storyIndexes[seedKey] += 1;
+  return files[index];
+}
+
+function playNextQueuedStory() {
+  if (activeStory || storyQueue.length === 0) {
+    updateQueueStatus();
+    return;
+  }
+
+  activeStory = storyQueue.shift();
+  let sound = sounds[activeStory.file];
+  if (!sound) {
+    console.error(`Missing sound file: ${activeStory.file}`);
+    activeStory = null;
+    playNextQueuedStory();
+    return;
+  }
+
+  console.log(`Playing ${activeStory.file} from ${activeStory.seed}`);
+  updateQueueStatus();
+  sound.play();
+}
+
+function finishActiveStory(file) {
+  if (!activeStory || activeStory.file !== file) {
+    return;
+  }
+
+  console.log(`Finished ${file}`);
+  activeStory = null;
+  updateQueueStatus();
+  playNextQueuedStory();
 }
