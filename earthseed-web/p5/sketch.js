@@ -1,147 +1,220 @@
-
-
-//let serial;
+const SERIAL_OPTIONS = { baudRate: 9600 };
 
 const serial = new p5.WebSerial();
 let sounds = [];
 let portButton;
-let inData;
-let outByte = 0; // for outgoing data
+let statusMessage;
 let storyState = 0; // which one should be playing
-let audioState = 0; // has it already been playing
 let defaultSound;
-let seed1=0; //
-let seed2=0;
-let seed3=0;
-
+let seed1 = 0;
+let seed2 = 0;
+let seed3 = 0;
+let serialOpening = false;
+let serialConnected = false;
 
 function preload() {
-  // Load sounds into the array
   let soundFiles = ["seed1_collage.mp3", "seed2_dre.mp3", "seed3_ximena.mp3"];
   soundFiles.forEach((file) => {
     sounds.push(loadSound(file));
   });
   defaultSound = loadSound("crickets.mp3");
-  
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  createSerialStatus();
+
   if (!navigator.serial) {
+    setSerialStatus("WebSerial is not supported in this browser. Try Chrome or MS Edge.");
     alert("WebSerial is not supported in this browser. Try Chrome or MS Edge.");
+    makePortButton();
+    return;
   }
-  console.log("we are in setup");
-  console.log(serial);
-  // if serial is available, add connect/disconnect listeners:
+
+  setSerialStatus("Serial supported");
   navigator.serial.addEventListener("connect", portConnect);
   navigator.serial.addEventListener("disconnect", portDisconnect);
-  // check for any ports that are available:
-  serial.getPorts();
-  // if there's no port chosen, choose one:
-  serial.on("noport", makePortButton);
-  // open whatever port is available:
-  serial.on("portavailable", openPort);
-  // handle serial errors:
+
+  serial.on("portavailable", () => openSelectedPort("manual selection"));
   serial.on("requesterror", portError);
-  // handle any incoming serial data:
+  serial.on("openerror", portError);
+  serial.on("readerror", portError);
+  serial.on("writeerror", portError);
   serial.on("data", serialEvent);
-  serial.on("close", makePortButton);
-  
- defaultSound.loop();
+  serial.on("close", handleSerialClose);
+
+  makePortButton();
+  attemptAutoConnect();
+
+  defaultSound.loop();
 }
 
 function draw() {
-  // if there's no port selected,
-  // make a port select button appear:
+}
+
+function createSerialStatus() {
+  statusMessage = createDiv("");
+  statusMessage.position(10, 42);
+  statusMessage.style("font-size", "12px");
+  statusMessage.style("color", "whitesmoke");
+  statusMessage.style("font-family", "Times New Roman, Times, serif");
+  statusMessage.style("background", "black");
+  statusMessage.style("padding", "4px 6px");
+  statusMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
+  statusMessage.style("z-index", "10");
+}
+
+function setSerialStatus(message, error) {
+  console.log(message);
+  if (error) {
+    console.error(error);
+  }
+  if (statusMessage) {
+    statusMessage.html(message);
+  }
+}
+
+async function attemptAutoConnect() {
+  if (!navigator.serial || serialConnected || serialOpening) {
+    return;
+  }
+
+  try {
+    const approvedPorts = await navigator.serial.getPorts();
+    if (approvedPorts.length === 0) {
+      setSerialStatus("No approved serial port yet; use Choose Port");
+      showPortButton();
+      return;
+    }
+
+    setSerialStatus("Previously approved port found");
+    serial.port = approvedPorts[0];
+    serial.portInfo = serial.port.getInfo();
+    openSelectedPort("previously approved port");
+  } catch (err) {
+    setSerialStatus("Serial connection failed", err);
+    showPortButton();
+  }
 }
 
 function makePortButton() {
-  // create and position a port chooser button:
-  portButton = createButton("choose port");
+  if (portButton) {
+    return;
+  }
+
+  portButton = createButton("Choose Port");
   portButton.position(10, 10);
-  // give the port button a mousepressed handler:
   portButton.mousePressed(choosePort);
 }
 
-// make the port selector window appear:
+function showPortButton() {
+  makePortButton();
+  if (portButton) {
+    portButton.show();
+  }
+}
+
+function hidePortButton() {
+  if (portButton) {
+    portButton.hide();
+  }
+}
+
 function choosePort() {
-  if (portButton) portButton.show();
+  if (!navigator.serial) {
+    setSerialStatus("WebSerial is not supported in this browser. Try Chrome or MS Edge.");
+    return;
+  }
+
+  if (serialConnected || serialOpening || serial.portOpen) {
+    setSerialStatus("Arduino is already connected");
+    hidePortButton();
+    return;
+  }
+
   serial.requestPort();
 }
 
-// open the selected port, and make the port
-// button invisible:
-function openPort() {
-  // wait for the serial.open promise to return,
-  // then call the initiateSerial function
-  serial.open().then(initiateSerial);
-
-  // once the port opens, let the user know:
-  function initiateSerial() {
-    console.log("port open");
+async function openSelectedPort(source) {
+  if (serialConnected || serialOpening || serial.portOpen) {
+    setSerialStatus("Arduino is already connected");
+    hidePortButton();
+    return;
   }
-  // hide the port button once a port is chosen:
-  if (portButton) portButton.hide();
+
+  serialOpening = true;
+  setSerialStatus(`Opening serial port from ${source}`);
+
+  try {
+    await serial.open(SERIAL_OPTIONS);
+    if (!serial.portOpen) {
+      throw new Error("Serial port did not open");
+    }
+    serialConnected = true;
+    setSerialStatus(source === "previously approved port" ? "Auto-connected to Arduino" : "Connected to Arduino");
+    hidePortButton();
+    serial.write("x");
+  } catch (err) {
+    setSerialStatus("Serial connection failed", err);
+    showPortButton();
+  } finally {
+    serialOpening = false;
+  }
 }
 
-// pop up an alert if there's a port error:
 function portError(err) {
-  alert("Serial port error: " + err);
+  setSerialStatus("Serial connection failed", err);
+  serialConnected = false;
+  serialOpening = false;
+  showPortButton();
 }
 
-// try to connect if a new serial port
-// gets added (i.e. plugged in via USB):
 function portConnect() {
-  console.log("port connected");
-  serial.getPorts();
+  setSerialStatus("Serial device connected");
+  attemptAutoConnect();
 }
 
-// if a port is disconnected:
 function portDisconnect() {
-  serial.close();
-  console.log("port disconnected");
+  setSerialStatus("Arduino disconnected");
+  serialConnected = false;
+  serialOpening = false;
+  showPortButton();
 }
 
-function closePort() {
-  serial.close();
+function handleSerialClose() {
+  setSerialStatus("Serial port closed");
+  serialConnected = false;
+  serialOpening = false;
+  showPortButton();
 }
 
 function serialEvent() {
   let inString = serial.readStringUntil("\r\n");
-  
-  //READS AND ASSIGNS SOUNDS
+
   if (inString) {
-    // split the string on the commas:
-    var sensors = split(inString, ",");
+    let sensors = split(inString, ",");
     if (sensors.length > 2) {
-      // if there are three elements
-      // element 0 is the locH:
-      seed1 = sensors[0];
-      // element 1 is the locV:
-      seed2 = sensors[1];
-      // element 2 is the button:
-      seed3 = sensors[2] ;
+      seed1 = int(trim(sensors[0]));
+      seed2 = int(trim(sensors[1]));
+      seed3 = int(trim(sensors[2]));
     }
   }
-      //if the index is a number and if its between 0 - 4 when i finish and if the index is different from the audio state; if its acutally changing
-      //storyState = index+1;
-  if (seed1 ==1 && seed2 ==0 && seed3 ==0){
+
+  if (seed1 === 1 && seed2 === 0 && seed3 === 0) {
     playSound(0);
   }
-    if (seed1 ==0 && seed2 ==1 && seed3 ==0){
+  if (seed1 === 0 && seed2 === 1 && seed3 === 0) {
     playSound(1);
   }
-    if (seed1 ==0 && seed2 ==0 && seed3 ==1){
+  if (seed1 === 0 && seed2 === 0 && seed3 === 1) {
     playSound(2);
   }
 
-
-    //console.log(storyState); //
-    serial.write("x"); // Tell Arduino about the current state
-  
+  if (serialConnected || serial.portOpen) {
+    serial.write("x");
+  }
 }
 
-// Function to play a sound and stop all others
 function playSound(activeIndex) {
   sounds.forEach((sound, index) => {
     if (index === activeIndex) {
@@ -151,63 +224,9 @@ function playSound(activeIndex) {
     } else {
       if (sound.isPlaying()) {
         sound.stop();
-        /// play default
       }
     }
   });
 
-  storyState = activeIndex; // Update the story state
-}
-
-/////////////////////////////////////////////
-// UTILITY FUNCTIONS TO MAKE CONNECTIONS  ///
-/////////////////////////////////////////////
-
-// if there's no port selected,
-// make a port select button appear:
-function makePortButton() {
-  // create and position a port chooser button:
-  portButton = createButton("choose port");
-  portButton.position(10, 10);
-  // give the port button a mousepressed handler:
-  portButton.mousePressed(choosePort);
-}
-
-// make the port selector window appear:
-function choosePort() {
-  serial.requestPort();
-}
-
-// open the selected port, and make the port
-// button invisible:
-function openPort() {
-  // wait for the serial.open promise to return,
-  // then call the initiateSerial function
-  serial.open().then(initiateSerial);
-
-  // once the port opens, let the user know:
-  function initiateSerial() {
-    console.log("port open");
-    serial.write("x"); // insertSongv
-  }
-  // hide the port button once a port is chosen:
-  if (portButton) portButton.hide();
-}
-
-// pop up an alert if there's a port error:
-function portError(err) {
-  alert("Serial port error: " + err);
-}
-
-// try to connect if a new serial port
-// gets added (i.e. plugged in via USB):
-function portConnect() {
-  console.log("port connected");
-  serial.getPorts();
-}
-
-// if a port is disconnected:
-function portDisconnect() {
-  serial.close();
-  console.log("port disconnected");
+  storyState = activeIndex;
 }

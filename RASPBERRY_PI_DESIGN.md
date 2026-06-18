@@ -45,6 +45,17 @@ The current browser serial approach is fine for laptop testing, but it is not
 ideal for unattended installation use because WebSerial usually requires a user
 gesture to select a serial port.
 
+The current WebSerial page now attempts a limited auto-reconnect:
+
+- `earthseed-web/p5/yes.html` loads `earthseed-web/p5/sketch.js`.
+- `sketch.js` calls `navigator.serial.getPorts()` on page load.
+- If Chrome already has a previously approved Arduino port, it opens that port
+  automatically at `9600` baud.
+- If no approved port exists, the page keeps the manual `Choose Port` button.
+
+This does not remove Chrome's first-time permission requirement. It only helps
+after the Arduino has already been approved once for this local site.
+
 ## Recommended Architecture
 
 ```text
@@ -141,31 +152,49 @@ The browser should no longer call `p5.WebSerial()` in the production Pi version.
 8. The Node server broadcasts the state to the browser.
 9. The p5.js sketch plays the corresponding story audio.
 
-## Proposed File Changes
+## Implemented File Paths
 
-### New or Updated Server
+### WebSerial Path
 
-Replace or expand `earthseed-web/p5/server.js`.
+The existing WebSerial path remains available for testing and fallback.
 
-Expected behavior:
+Files:
 
-- Serve the `earthseed-web` directory as the web root.
-- Expose pages like:
-  - `http://localhost:3000/p5/index.html`
-  - `http://localhost:3000/p5/passcode.html`
-  - `http://localhost:3000/p5/yes.html`
-- Start a WebSocket server on the same HTTP server.
-- Read from the Arduino serial port.
+- `earthseed-web/p5/yes.html`
+- `earthseed-web/p5/sketch.js`
 
-### New Browser Script Path
+Run with the simple static server:
 
-Update `earthseed-web/p5/sketch.js`.
+```bash
+cd ~/nyuinteractivesensorcode/earthseed-web
+python3 -m http.server 3001
+```
 
-Expected behavior:
+Open:
 
-- Remove direct use of `p5.WebSerial()` for the Pi version.
-- Connect to the local WebSocket server.
-- Handle messages shaped like:
+```text
+http://localhost:3001/p5/yes.html
+```
+
+### Node Bridge Path
+
+The Node bridge path is the first version of the fully unattended installation
+architecture.
+
+Files:
+
+- `earthseed-web/package.json`
+- `earthseed-web/bridge-server.js`
+- `earthseed-web/p5/yes-bridge.html`
+- `earthseed-web/p5/sketch-bridge.js`
+
+Behavior:
+
+- Serves the `earthseed-web` directory as the web root.
+- Opens `/dev/ttyACM0` by default at `9600` baud.
+- Sends the existing `"x"` request byte to the Arduino.
+- Parses Arduino CSV lines such as `1, 0, 0`.
+- Broadcasts messages to the browser over WebSocket:
 
 ```json
 {
@@ -173,6 +202,18 @@ Expected behavior:
   "seed2": 0,
   "seed3": 0
 }
+```
+
+Open:
+
+```text
+http://localhost:3001/p5/yes-bridge.html
+```
+
+Environment overrides:
+
+```bash
+SERIAL_PATH=/dev/ttyUSB0 BAUD_RATE=9600 PORT=3001 npm start
 ```
 
 ### Optional Arduino Cleanup
@@ -207,6 +248,24 @@ Installation setup:
 7. Open the local app in Chromium and test audio.
 8. Add startup automation after manual testing succeeds.
 
+Node bridge setup on the Pi:
+
+```bash
+cd ~/nyuinteractivesensorcode/earthseed-web
+npm install
+npm start
+```
+
+Expected terminal logs:
+
+```text
+Web server listening at http://localhost:3001
+Opening serial port /dev/ttyACM0 at 9600 baud
+Serial port opened
+Browser connected
+Serial data received: 1, 0, 0
+```
+
 ## Startup Automation
 
 The production Pi should start the piece after boot.
@@ -216,10 +275,16 @@ Recommended approach:
 - Use a `systemd` service for the Node server.
 - Use desktop autostart or a browser launch service for Chromium kiosk mode.
 
-Example browser target:
+Current WebSerial browser target:
 
 ```text
-http://localhost:3000/p5/yes.html
+http://localhost:3001/p5/yes.html
+```
+
+Node bridge browser target:
+
+```text
+http://localhost:3001/p5/yes-bridge.html
 ```
 
 For a public-facing installation, the target might be the intro page instead:
@@ -287,26 +352,37 @@ The important pieces are:
 
 ## Implementation Phases
 
-### Phase 1: Local Laptop Prototype
+### Phase 1: WebSerial Auto-Reconnect
 
-- Build the Node serial/WebSocket bridge locally.
-- Keep Arduino connected over USB.
-- Confirm the p5 sketch can play audio from WebSocket messages.
-- Confirm browser WebSerial is no longer needed.
+- Keep the current WebSerial page working.
+- Keep the manual `Choose Port` button as a fallback.
+- Use `navigator.serial.getPorts()` to auto-open a previously approved port.
+- Avoid double-opening the serial port.
+- Log clear connection state in the browser console and on the page.
 
-### Phase 2: Raspberry Pi Manual Run
+### Phase 2: Node Bridge Manual Run
 
-- Copy project to the Pi.
 - Install dependencies.
-- Run the server manually from terminal.
-- Open Chromium manually.
+- Run `npm start` from `earthseed-web`.
+- Open `http://localhost:3001/p5/yes-bridge.html`.
 - Test serial input and audio output.
 
 ### Phase 3: Startup Automation
 
-- Add a `systemd` service for the server.
-- Add Chromium kiosk launch on desktop startup.
+- Update `/home/interactivesensor/scripts/start-earthseed.sh` to start the
+  Node bridge instead of `python3 -m http.server`.
+- Launch Chromium kiosk mode to `/p5/yes-bridge.html`.
 - Reboot repeatedly and confirm the piece returns automatically.
+
+Example startup script shape:
+
+```bash
+#!/bin/bash
+cd /home/interactivesensor/nyuinteractivesensorcode/earthseed-web
+npm start &
+sleep 5
+chromium-browser --kiosk http://localhost:3001/p5/yes-bridge.html
+```
 
 ### Phase 4: Installation Hardening
 
