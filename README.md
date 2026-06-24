@@ -26,8 +26,9 @@ The server uses `/dev/ttyACM0` by default and also checks `/dev/ttyACM0-9` and `
 | Seed 2 | `storyaudio4.mp3`, `storyaudio5.mp3`, `storyaudio6.mp3` |
 | Seed 3 | `storyaudio7.mp3`, `storyaudio8.mp3`, `storyaudio9.mp3` |
 
-Each sensor cycles through its three files. Touching a sensor while a story is playing now stops the playing storyaudio and immediately starts the newly selected sensor's next file; stories are not queued in the same snese in which they were in the previous update. 
+Each sensor cycles through its three files. Touching a sensor while a story is playing now stops the playing storyaudio and immediately starts the newly selected sensor's next file; stories are not queued in the same snese in which they were in the previous update (the edited code is primairly in sketch and sketch prodge [both .js] with ). 
 
 The background audio must be named `crickets.mp3` and stored in the same `/earthseed-web/p5` folder. Use lowercase `.mp3` extensions for changing and renaming audio files.
 
 After all 9 of these files are put into `/earthseed-web/p5`, you will need to open the local file `cd /path/to/nyuinteractivesensorcode` on the pi and do `git pull`, `cd earthseed-web`, `npm install`, `npm start`, and then lastly once everything is setup, do `sudo reboot` or if you want to turn off the pi and unplug it do `sudo poweroff`.
+
