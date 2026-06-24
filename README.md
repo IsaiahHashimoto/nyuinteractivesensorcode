@@ -17,7 +17,6 @@ If this is for the Jun 30th, 2026 show it should already be connected and you ca
 The server uses `/dev/ttyACM0` by default and also checks `/dev/ttyACM0-9` and `/dev/ttyUSB0-9`. To specify another port, start it with `SERIAL_PATH=/your/port npm start`.
 
 ## Audio file names
-cd
 As of June 24th, 2026 the audio files are saved under different names than the following. You must upload the new files or change the existing ones to match the following structure. Put all audio files in `earthseed-web/p5/`. Their names must match exactly:
 
 | Sensor | Required file names |
@@ -27,3 +26,5 @@ As of June 24th, 2026 the audio files are saved under different names than the f
 | Seed 3 | `storyaudio7.mp3`, `storyaudio8.mp3`, `storyaudio9.mp3` |
 
 Each sensor cycles through its three files. The background audio must be named `crickets.mp3` and stored in the same folder. Use lowercase `.mp3` extensions.
+
+After all 9 of these files are put into /eathseed-web/p5, you will need to open the local file (cd /path/to/nyuinteractivesensorcode) on the pi and do "git pull", "cd earthseed-web", "npm install", "npm start", and then lastly once everything is setup, do "sudo reboot" or if you want to turn off the pi and unplug it do "sudo poweroff".
