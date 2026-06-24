@@ -27,4 +27,4 @@ As of June 24th, 2026 the audio files are saved under different names than the f
 
 Each sensor cycles through its three files. The background audio must be named `crickets.mp3` and stored in the same folder. Use lowercase `.mp3` extensions.
 
-After all 9 of these files are put into /eathseed-web/p5, you will need to open the local file (cd /path/to/nyuinteractivesensorcode) on the pi and do "git pull", "cd earthseed-web", "npm install", "npm start", and then lastly once everything is setup, do "sudo reboot" or if you want to turn off the pi and unplug it do "sudo poweroff".
+After all 9 of these files are put into /earthseed-web/p5, you will need to open the local file "cd /path/to/nyuinteractivesensorcode" on the pi and do "git pull", "cd earthseed-web", "npm install", "npm start", and then lastly once everything is setup, do "sudo reboot" or if you want to turn off the pi and unplug it do "sudo poweroff".
