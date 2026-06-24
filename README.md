@@ -25,6 +25,8 @@ As of June 24th, 2026 the audio files are saved under different names than the f
 | Seed 2 | `storyaudio4.mp3`, `storyaudio5.mp3`, `storyaudio6.mp3` |
 | Seed 3 | `storyaudio7.mp3`, `storyaudio8.mp3`, `storyaudio9.mp3` |
 
-Each sensor cycles through its three files. The background audio must be named `crickets.mp3` and stored in the same folder. Use lowercase `.mp3` extensions.
+Each sensor cycles through its three files. Touching a sensor while a story is playing now stops that story and immediately starts the newly selected sensor's next file; stories are not queued. 
+
+The background audio must be named `crickets.mp3` and stored in the same /earthseed-web/p5 folder. Use lowercase `.mp3` extensions for changing and renaming audio files.
 
 After all 9 of these files are put into /earthseed-web/p5, you will need to open the local file "cd /path/to/nyuinteractivesensorcode" on the pi and do "git pull", "cd earthseed-web", "npm install", "npm start", and then lastly once everything is setup, do "sudo reboot" or if you want to turn off the pi and unplug it do "sudo poweroff".

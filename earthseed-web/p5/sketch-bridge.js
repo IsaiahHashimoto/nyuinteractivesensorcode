@@ -5,10 +5,10 @@ const STORY_TRACKS = {
 };
 
 let sounds = {};
-let storyQueue = [];
 let activeStory = null;
+let pendingStory = null;
 let statusMessage;
-let queueMessage;
+let playbackMessage;
 let socket = null;
 let reconnectTimer = null;
 let defaultSound;
@@ -54,17 +54,16 @@ function createBridgeStatus() {
   statusMessage.style("padding", "4px 6px");
   statusMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
   statusMessage.style("z-index", "10");
-
-  queueMessage = createDiv("");
-  queueMessage.position(10, 74);
-  queueMessage.style("font-size", "12px");
-  queueMessage.style("color", "whitesmoke");
-  queueMessage.style("font-family", "Times New Roman, Times, serif");
-  queueMessage.style("background", "black");
-  queueMessage.style("padding", "4px 6px");
-  queueMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
-  queueMessage.style("z-index", "10");
-  updateQueueStatus();
+  playbackMessage = createDiv("");
+  playbackMessage.position(10, 74);
+  playbackMessage.style("font-size", "12px");
+  playbackMessage.style("color", "whitesmoke");
+  playbackMessage.style("font-family", "Times New Roman, Times, serif");
+  playbackMessage.style("background", "black");
+  playbackMessage.style("padding", "4px 6px");
+  playbackMessage.style("border", "1px solid rgba(245, 245, 245, 0.4)");
+  playbackMessage.style("z-index", "10");
+  updatePlaybackStatus();
 }
 
 function createAudioButton() {
@@ -76,7 +75,7 @@ function createAudioButton() {
 function createTestButton() {
   testButton = createButton("Test Story");
   testButton.position(110, 42);
-  testButton.mousePressed(() => enqueueStory("seed1"));
+  testButton.mousePressed(() => switchStory("seed1"));
 }
 
 function setBridgeStatus(message, error) {
@@ -89,13 +88,16 @@ function setBridgeStatus(message, error) {
   }
 }
 
-function updateQueueStatus() {
-  if (!queueMessage) {
+function updatePlaybackStatus() {
+  if (!playbackMessage) {
     return;
   }
 
-  let activeText = activeStory ? `playing ${activeStory.file}` : "no story playing";
-  queueMessage.html(`${activeText}; queue ${storyQueue.length}`);
+  let playbackText = activeStory ? `playing ${activeStory.file}` : "no story playing";
+  if (pendingStory) {
+    playbackText = `waiting to play ${pendingStory.file}`;
+  }
+  playbackMessage.html(playbackText);
 }
 
 async function startAudio() {
@@ -110,7 +112,7 @@ async function startAudio() {
       if (audioButton) {
         audioButton.hide();
       }
-      playNextQueuedStory();
+      playPendingStory();
       setBridgeStatus(socket && socket.readyState === WebSocket.OPEN ? "Connected to local serial bridge" : "Audio ready");
     } else {
       showAudioButton();
@@ -176,24 +178,21 @@ function handleSensorState(state) {
     seed3: int(state.seed3)
   };
 
-  enqueueSensorAdvances(sensorState);
+  switchOnSensorAdvances(sensorState);
   previousSensorState = sensorState;
 }
 
-function enqueueSensorAdvances(sensorState) {
+function switchOnSensorAdvances(sensorState) {
   Object.keys(STORY_TRACKS).forEach((seedKey) => {
     if (previousSensorState[seedKey] === 0 && sensorState[seedKey] === 1) {
-      enqueueStory(seedKey);
+      switchStory(seedKey);
     }
   });
 }
 
-function enqueueStory(seedKey) {
+function switchStory(seedKey) {
   let file = nextStoryFile(seedKey);
-  storyQueue.push({ seed: seedKey, file });
-  console.log(`Queued ${file} from ${seedKey}`);
-  updateQueueStatus();
-  playNextQueuedStory();
+  playStory({ seed: seedKey, file });
 }
 
 function nextStoryFile(seedKey) {
@@ -203,32 +202,49 @@ function nextStoryFile(seedKey) {
   return files[index];
 }
 
-function playNextQueuedStory() {
+function playStory(story) {
   audioStarted = getAudioContext().state === "running";
   if (!audioStarted) {
+    pendingStory = story;
     setBridgeStatus("Audio blocked; click Start Audio");
     showAudioButton();
-    updateQueueStatus();
+    updatePlaybackStatus();
     return;
   }
 
-  if (activeStory || storyQueue.length === 0) {
-    updateQueueStatus();
-    return;
-  }
-
-  activeStory = storyQueue.shift();
-  let sound = sounds[activeStory.file];
+  pendingStory = null;
+  stopActiveStory();
+  let sound = sounds[story.file];
   if (!sound) {
-    console.error(`Missing sound file: ${activeStory.file}`);
-    activeStory = null;
-    playNextQueuedStory();
+    console.error(`Missing sound file: ${story.file}`);
+    updatePlaybackStatus();
     return;
   }
 
-  console.log(`Playing ${activeStory.file} from ${activeStory.seed}`);
-  updateQueueStatus();
+  activeStory = story;
+  console.log(`Playing ${story.file} from ${story.seed}`);
+  updatePlaybackStatus();
   sound.play();
+}
+
+function playPendingStory() {
+  if (pendingStory) {
+    playStory(pendingStory);
+  }
+}
+
+function stopActiveStory() {
+  if (!activeStory) {
+    return;
+  }
+
+  let previousStory = activeStory;
+  activeStory = null;
+  let sound = sounds[previousStory.file];
+  if (sound && sound.isPlaying()) {
+    console.log(`Stopping ${previousStory.file} for a new sensor selection`);
+    sound.stop();
+  }
 }
 
 function finishActiveStory(file) {
@@ -238,8 +254,7 @@ function finishActiveStory(file) {
 
   console.log(`Finished ${file}`);
   activeStory = null;
-  updateQueueStatus();
-  playNextQueuedStory();
+  updatePlaybackStatus();
 }
 
 function mousePressed() {
