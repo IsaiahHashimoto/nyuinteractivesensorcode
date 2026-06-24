@@ -32,3 +32,6 @@ The background audio must be named `crickets.mp3` and stored in the same `/earth
 
 After all 9 of these files are put into `/earthseed-web/p5`, you will need to open the local file `cd /path/to/nyuinteractivesensorcode` on the pi and do `git pull`, `cd earthseed-web`, `npm install`, `npm start`, and then lastly once everything is setup, do `sudo reboot` or if you want to turn off the pi and unplug it do `sudo poweroff`.
 
+A diagram of the following sensors can be seen at:
+
+![image](sensorinteractiondiagram.png)
