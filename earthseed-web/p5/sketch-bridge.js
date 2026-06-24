@@ -1,9 +1,8 @@
 const STORY_TRACKS = {
-  seed1: ["seed1_collage.mp3", "jimmy1.mp3"],
-  seed2: ["seed2_dre.mp3", "nina1.mp3"],
-  seed3: ["seed3_ximena.mp3", "sherri1.mp3"]
+  seed1: ["storyaudio1.mp3", "storyaudio2.mp3", "storyaudio3.mp3"],
+  seed2: ["storyaudio4.mp3", "storyaudio5.mp3", "storyaudio6.mp3"],
+  seed3: ["storyaudio7.mp3", "storyaudio8.mp3", "storyaudio9.mp3"]
 };
-const MAX_QUEUE_LENGTH = 12;
 
 let sounds = {};
 let storyQueue = [];
@@ -190,11 +189,6 @@ function enqueueSensorAdvances(sensorState) {
 }
 
 function enqueueStory(seedKey) {
-  if (storyQueue.length >= MAX_QUEUE_LENGTH) {
-    console.log(`Story queue full; ignoring ${seedKey}`);
-    return;
-  }
-
   let file = nextStoryFile(seedKey);
   storyQueue.push({ seed: seedKey, file });
   console.log(`Queued ${file} from ${seedKey}`);
