@@ -46,9 +46,9 @@ If the browser opens but audio does not start, click **Start Audio** once. Brows
 
 | Sensor | Required file names |
 | --- | --- |
-| Seed 1 | `storyaudio1.mp3`, `storyaudio2.mp3`, `storyaudio3.mp3` |
-| Seed 2 | `storyaudio4.mp3`, `storyaudio5.mp3`, `storyaudio6.mp3` |
-| Seed 3 | `storyaudio7.mp3`, `storyaudio8.mp3`, `storyaudio9.mp3` |
+| Seed 1 | `seedaudio1.mp3`, `seedaudio2.mp3`, `seedaudio3.mp3` |
+| Seed 2 | `seedaudio4.mp3`, `seedaudio5.mp3`, `seedaudio6.mp3` |
+| Seed 3 | `seedaudio7.mp3`, `seedaudio8.mp3`, `seedaudio9.mp3` |
 
 Each sensor cycles through its three files. Touching a sensor while a story is playing stops the current story audio and immediately starts the newly selected sensor's next file; stories are not queued.
 

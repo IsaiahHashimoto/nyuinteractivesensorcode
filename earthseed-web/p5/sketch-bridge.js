@@ -1,7 +1,7 @@
 const STORY_TRACKS = {
-  seed1: ["storyaudio1.mp3", "storyaudio2.mp3", "storyaudio3.mp3"],
-  seed2: ["storyaudio4.mp3", "storyaudio5.mp3", "storyaudio6.mp3"],
-  seed3: ["storyaudio7.mp3", "storyaudio8.mp3", "storyaudio9.mp3"]
+  seed1: ["seedaudio1.mp3", "seedaudio2.mp3", "seedaudio3.mp3"],
+  seed2: ["seedaudio4.mp3", "seedaudio5.mp3", "seedaudio6.mp3"],
+  seed3: ["seedaudio7.mp3", "seedaudio8.mp3", "seedaudio9.mp3"]
 };
 
 let sounds = {};
